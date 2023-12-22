@@ -9,6 +9,7 @@
 package com.appdynamics.extensions.logmonitor.util;
 
 import com.appdynamics.extensions.logmonitor.LogEvent;
+import com.appdynamics.extensions.logmonitor.config.ExcludeString;
 import com.appdynamics.extensions.logmonitor.config.FilePointer;
 import com.appdynamics.extensions.logmonitor.config.Log;
 import com.appdynamics.extensions.logmonitor.config.SearchPattern;
@@ -82,6 +83,33 @@ public class LogMonitorUtil {
         }
         return searchPatterns;
     }
+    
+    public static List<SearchPattern> createExcludePattern(List<ExcludeString> excludeStrings) {
+        List<SearchPattern> searchPatterns = new ArrayList<SearchPattern>();
+        if (excludeStrings != null && !excludeStrings.isEmpty()) {
+            for (ExcludeString excludeString : excludeStrings) {
+                Pattern pattern;
+                StringBuilder rawPatternsStringBuilder = new StringBuilder();
+                if (excludeString.getCaseSensitive()) {
+                    rawPatternsStringBuilder.append(CASE_SENSITIVE_PATTERN);
+                } else {
+                    rawPatternsStringBuilder.append(CASE_INSENSITIVE_PATTERN);
+                }
+                if (excludeString.getMatchExactString()) {
+                    rawPatternsStringBuilder.append("(?<=\\s|^)");
+                    rawPatternsStringBuilder.append(Pattern.quote(excludeString.getPattern().trim()));
+                    rawPatternsStringBuilder.append("(?=\\s|$)");
+                } else {
+                    rawPatternsStringBuilder.append(excludeString.getPattern().trim());
+                }
+                pattern = Pattern.compile(rawPatternsStringBuilder.toString());
+                SearchPattern searchPattern = new SearchPattern(excludeString.getDisplayName(), pattern,
+                        excludeString.getCaseSensitive(),false);
+                searchPatterns.add(searchPattern);
+            }
+        }
+        return searchPatterns;
+    }
 
     public static void closeRandomAccessFile(OptimizedRandomAccessFile randomAccessFile) {
         if (randomAccessFile != null) {
@@ -145,6 +173,7 @@ public class LogMonitorUtil {
         log.setLogName((String) currentLogFromConfig.get("logName"));
         log.setLogDirectory((String) currentLogFromConfig.get("logDirectory"));
         log.setSearchStrings(initializeSearchStrings(currentLogFromConfig));
+        log.setExcludeStrings(initializeExcludeStrings(currentLogFromConfig));
 
         if (currentLogFromConfig.containsKey("encoding")) {
             String encodingFromConfig = (String) currentLogFromConfig.get("encoding");
@@ -168,6 +197,23 @@ public class LogMonitorUtil {
             searchStrings.add(searchString);
         }
         return searchStrings;
+    }
+    
+    private static List<ExcludeString> initializeExcludeStrings(Map<String, ?> currentLogFromConfig) {
+        List<ExcludeString> excludeStrings = Lists.newArrayList();
+        List<Map<String, ?>> excludeStringsForCurrentLog = (List) currentLogFromConfig.get("excludeStrings");
+        if(null != excludeStringsForCurrentLog && excludeStringsForCurrentLog.size() > 0) {
+	        for (Map<String, ?> excludeStringFromLog : excludeStringsForCurrentLog) {
+	        	ExcludeString excludeString = new ExcludeString();
+	        	excludeString.setDisplayName((String) excludeStringFromLog.get("displayName"));
+	        	excludeString.setPattern((String) excludeStringFromLog.get("pattern"));
+	        	excludeString.setMatchExactString((Boolean) excludeStringFromLog.get("matchExactString"));
+	        	excludeString.setCaseSensitive((Boolean) excludeStringFromLog.get("caseSensitive"));
+	        	//excludeString.setPrintMatchedString((Boolean) excludeStringFromLog.get("printMatchedString"));
+	            excludeStrings.add(excludeString);
+	        }
+        }
+        return excludeStrings;
     }
 
     private static boolean isValidEncodingType(String encodingFromConfig, String logDisplayName) {
