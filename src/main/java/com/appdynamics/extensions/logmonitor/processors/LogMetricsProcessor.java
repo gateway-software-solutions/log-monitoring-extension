@@ -43,6 +43,7 @@ public class LogMetricsProcessor implements Runnable {
     private CountDownLatch latch;
     private File currentFile;
     private List<SearchPattern> searchPatterns;
+    private List<SearchPattern> excludePatterns;
     private Map<Pattern, String> replacers;
     private LogMetrics logMetrics;
     private EventsServiceDataManager eventsServiceDataManager;
@@ -58,6 +59,9 @@ public class LogMetricsProcessor implements Runnable {
         this.logMetrics = logMetrics;
         this.currentFile = currentFile;
         this.searchPatterns = createPattern(this.log.getSearchStrings());
+        if(null != this.log.getExcludeStrings() && this.log.getExcludeStrings().size() > 0) {
+        	this.excludePatterns = createExcludePattern(this.log.getExcludeStrings());
+        }
         this.eventsServiceDataManager = eventsServiceDataManager;
         this.offset = offset;
     }
@@ -77,11 +81,12 @@ public class LogMetricsProcessor implements Runnable {
         long currentFilePointer = randomAccessFile.getFilePointer();
         String currentLine;
         setBaseOccurrenceCountForConfiguredPatterns();
+        setBaseOccurrenceCountForExcludePatterns();
         if (eventsServiceDataManager != null) {
             logEventsProcessor = new LogEventsProcessor(eventsServiceDataManager, offset, log);
         }
         while ((currentLine = randomAccessFile.readLine()) != null) {
-            incrementWordCountIfSearchStringMatched(searchPatterns, currentLine);
+            incrementWordCountIfSearchStringMatched(searchPatterns, excludePatterns, currentLine);
             currentFilePointer = randomAccessFile.getFilePointer();
         }
         long currentFileCreationTime = getCurrentFileCreationTimeStamp(currentFile);
@@ -102,41 +107,106 @@ public class LogMetricsProcessor implements Runnable {
                     logMetrics.getMetricPrefix() + METRIC_SEPARATOR + metricName));
         }
     }
+    
+    private void setBaseOccurrenceCountForExcludePatterns() {
+            String currentKey = getExcludeStringPrefix();
+            String metricName = currentKey + EXCLUDES;
+            logMetrics.add(metricName, new Metric(metricName, String.valueOf(BigInteger.ZERO),
+                    logMetrics.getMetricPrefix() + METRIC_SEPARATOR + metricName));
+    }
 
-    private void incrementWordCountIfSearchStringMatched(List<SearchPattern> searchPatterns, String stringToCheck) {
-        for (SearchPattern searchPattern : searchPatterns) {
-            Matcher matcher = searchPattern.getPattern().matcher(stringToCheck);
-            String currentKey = getSearchStringPrefix() + searchPattern.getDisplayName() + METRIC_SEPARATOR;
-
-            while (matcher.find()) {
-                BigInteger occurrences = new BigInteger(logMetrics.getMetrics().get(currentKey + OCCURRENCES)
-                        .getMetricValue());
-                String metricName = currentKey + OCCURRENCES;
-                LOGGER.info("Match found for pattern: {} in log: {}", searchPattern.getDisplayName(), log.getDisplayName());
-                logMetrics.add(metricName, new Metric(metricName, String.valueOf(occurrences.add(BigInteger.ONE)),
-                        logMetrics.getMetricPrefix() + METRIC_SEPARATOR + metricName));
-
-                if (searchPattern.getPrintMatchedString()) {
-                    String path;
-                    LOGGER.info("Adding actual matches to the queue for printing for log: {}", log.getDisplayName());
-                    String replacedWord = matcher.group().trim();
-                    if (searchPattern.getCaseSensitive()) {
-                        metricName = currentKey+MATCHES+METRIC_SEPARATOR+replacedWord;
-                        path = MetricPathUtils.buildMetricPath(currentKey,MATCHES,replacedWord);
-                    } else {
-                        metricName = currentKey+MATCHES+METRIC_SEPARATOR+WordUtils.capitalizeFully(replacedWord);
-                        path = MetricPathUtils.buildMetricPath(currentKey,MATCHES,WordUtils.capitalizeFully(replacedWord));
-                    }
-                    logMetrics.add(metricName, logMetrics.getMetricPrefix() + METRIC_SEPARATOR + path);
-                }
-
-                if (logEventsProcessor != null) {
-                    logMetrics.addLogEvent(logEventsProcessor.processLogEvent(searchPattern, randomAccessFile, stringToCheck));
-                } else {
-                    LOGGER.info("This data does not have to be sent to the events service, skipping.");
-                }
-            }
-        }
+//    private void incrementWordCountIfSearchStringMatched(List<SearchPattern> searchPatterns, String stringToCheck) {
+//        for (SearchPattern searchPattern : searchPatterns) {
+//            Matcher matcher = searchPattern.getPattern().matcher(stringToCheck);
+//            String currentKey = getSearchStringPrefix() + searchPattern.getDisplayName() + METRIC_SEPARATOR;
+//
+//            while (matcher.find()) {
+//                BigInteger occurrences = new BigInteger(logMetrics.getMetrics().get(currentKey + OCCURRENCES)
+//                        .getMetricValue());
+//                String metricName = currentKey + OCCURRENCES;
+//                LOGGER.info("Match found for pattern: {} in log: {}", searchPattern.getDisplayName(), log.getDisplayName());
+//                logMetrics.add(metricName, new Metric(metricName, String.valueOf(occurrences.add(BigInteger.ONE)),
+//                        logMetrics.getMetricPrefix() + METRIC_SEPARATOR + metricName));
+//
+//                if (searchPattern.getPrintMatchedString()) {
+//                    String path;
+//                    LOGGER.info("Adding actual matches to the queue for printing for log: {}", log.getDisplayName());
+//                    String replacedWord = matcher.group().trim();
+//                    if (searchPattern.getCaseSensitive()) {
+//                        metricName = currentKey+MATCHES+METRIC_SEPARATOR+replacedWord;
+//                        path = MetricPathUtils.buildMetricPath(currentKey,MATCHES,replacedWord);
+//                    } else {
+//                        metricName = currentKey+MATCHES+METRIC_SEPARATOR+WordUtils.capitalizeFully(replacedWord);
+//                        path = MetricPathUtils.buildMetricPath(currentKey,MATCHES,WordUtils.capitalizeFully(replacedWord));
+//                    }
+//                    logMetrics.add(metricName, logMetrics.getMetricPrefix() + METRIC_SEPARATOR + path);
+//                }
+//
+//                if (logEventsProcessor != null) {
+//                    logMetrics.addLogEvent(logEventsProcessor.processLogEvent(searchPattern, randomAccessFile, stringToCheck));
+//                } else {
+//                    LOGGER.info("This data does not have to be sent to the events service, skipping.");
+//                }
+//            }
+//        }
+//    }
+    
+    private void incrementWordCountIfSearchStringMatched(List<SearchPattern> searchPatterns, List<SearchPattern> excludePatterns, String stringToCheck) {
+    	
+    	boolean exclude = false;
+    	if(null != excludePatterns && excludePatterns.size() > 0) {
+    		for(SearchPattern excludePattern : excludePatterns) {
+    			Matcher excludeMatcher = excludePattern.getPattern().matcher(stringToCheck);
+    			if(excludeMatcher.find()) {
+    				exclude = true;
+    				LOGGER.debug("The string is being excluded as it matches one of exclude patterns. {}",excludePattern.getPattern());
+    				
+    				String excludeKey = getExcludeStringPrefix();
+    				String excludeMetricName = excludeKey + EXCLUDES;
+    				BigInteger excludes = new BigInteger(logMetrics.getMetrics().get(excludeMetricName)
+                            .getMetricValue());
+    				logMetrics.add(excludeMetricName, new Metric(excludeMetricName, String.valueOf(excludes.add(BigInteger.ONE)),
+                            logMetrics.getMetricPrefix() + METRIC_SEPARATOR + excludeMetricName));
+    				break;
+    			}
+    		}
+    	}
+    	
+    	if(!exclude) {
+	        for (SearchPattern searchPattern : searchPatterns) {
+	            Matcher matcher = searchPattern.getPattern().matcher(stringToCheck);
+	            String currentKey = getSearchStringPrefix() + searchPattern.getDisplayName() + METRIC_SEPARATOR;
+	
+	            while (matcher.find()) {
+	                BigInteger occurrences = new BigInteger(logMetrics.getMetrics().get(currentKey + OCCURRENCES)
+	                        .getMetricValue());
+	                String metricName = currentKey + OCCURRENCES;
+	                LOGGER.info("Match found for pattern: {} in log: {}", searchPattern.getDisplayName(), log.getDisplayName());
+	                logMetrics.add(metricName, new Metric(metricName, String.valueOf(occurrences.add(BigInteger.ONE)),
+	                        logMetrics.getMetricPrefix() + METRIC_SEPARATOR + metricName));
+	
+	                if (searchPattern.getPrintMatchedString()) {
+	                    String path;
+	                    LOGGER.info("Adding actual matches to the queue for printing for log: {}", log.getDisplayName());
+	                    String replacedWord = matcher.group().trim();
+	                    if (searchPattern.getCaseSensitive()) {
+	                        metricName = currentKey+MATCHES+METRIC_SEPARATOR+replacedWord;
+	                        path = MetricPathUtils.buildMetricPath(currentKey,MATCHES,replacedWord);
+	                    } else {
+	                        metricName = currentKey+MATCHES+METRIC_SEPARATOR+WordUtils.capitalizeFully(replacedWord);
+	                        path = MetricPathUtils.buildMetricPath(currentKey,MATCHES,WordUtils.capitalizeFully(replacedWord));
+	                    }
+	                    logMetrics.add(metricName, logMetrics.getMetricPrefix() + METRIC_SEPARATOR + path);
+	                }
+	
+	                if (logEventsProcessor != null) {
+	                    logMetrics.addLogEvent(logEventsProcessor.processLogEvent(searchPattern, randomAccessFile, stringToCheck));
+	                } else {
+	                    LOGGER.info("This data does not have to be sent to the events service, skipping.");
+	                }
+	            }
+	        }
+    	}
     }
 
     private void updateCurrentFilePointer(String filePath, long lastReadPosition, long creationTimestamp) {
@@ -147,6 +217,11 @@ public class LogMetricsProcessor implements Runnable {
         logMetrics.updateFilePointer(filePointer);
     }
 
+    private String getExcludeStringPrefix() {
+        return String.format("%s%s%s", getLogNamePrefix(),
+                EXCLUDE_STRING, METRIC_SEPARATOR);
+    }
+    
     private String getSearchStringPrefix() {
         return String.format("%s%s%s", getLogNamePrefix(),
                 SEARCH_STRING, METRIC_SEPARATOR);

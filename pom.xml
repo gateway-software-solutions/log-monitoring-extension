@@ -6,7 +6,7 @@
 
     <groupId>log-monitoring-extension</groupId>
     <artifactId>log-monitoring-extension</artifactId>
-    <version>4.0.5</version>
+    <version>5.0.1</version>
     <name>Log Monitor</name>
     <description>Inspects logs and counts the number of occurrences of specified search terms</description>
 
@@ -131,6 +131,10 @@
                                 <copy todir="${target.dir}">
                                     <fileset dir="${project.basedir}" includes="NOTICE.txt"/>
                                 </copy>
+                                <!-- <delete dir="/Users/mayank/work/appD/MachineAgent-23/monitors/LogMonitor" includes="log-monitoring-extension.jar"/>
+                                <copy todir="/Users/mayank/work/appD/MachineAgent-23/monitors/LogMonitor">
+                                    <fileset dir="${build.directory}" includes="log-monitoring-extension.jar"/>
+                                </copy> -->
                                 <zip destfile="${target.dir}-${project.version}.zip">
                                     <zipfileset dir="${target.dir}" filemode="755"
                                                 prefix="LogMonitor/" />

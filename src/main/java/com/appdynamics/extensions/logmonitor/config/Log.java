@@ -28,6 +28,8 @@ public class Log {
     private String encoding;
 
     private List<SearchString> searchStrings;
+    
+    private List<ExcludeString> excludeStrings;
 
     public String getDisplayName() {
         return displayName;
@@ -68,8 +70,18 @@ public class Log {
     public void setSearchStrings(List<SearchString> searchStrings) {
         this.searchStrings = searchStrings;
     }
+    
+    
 
-    @Override
+    public List<ExcludeString> getExcludeStrings() {
+		return excludeStrings;
+	}
+
+	public void setExcludeStrings(List<ExcludeString> excludeStrings) {
+		this.excludeStrings = excludeStrings;
+	}
+
+	@Override
     public String toString() {
         return ReflectionToStringBuilder.toString(this,
                 ToStringStyle.SHORT_PREFIX_STYLE);
