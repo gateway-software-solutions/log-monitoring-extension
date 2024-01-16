@@ -10,6 +10,7 @@ logs:
   logDirectory: ""
   logName: ""
   encoding: ""      #Not mandatory. Supported types: UTF8, UTF16, UTF16-LE, UTF16-BE, UTF32, UTF-32LE, UTF32-BE
+  sendMatchedLinesAsCustomEvent: true #Not mandatory. default is true. can be configured to disable custom event posting for a particular log file
   searchStrings:
   #displayName Should be unique across the various patterns.
   - displayName: ""
@@ -17,6 +18,14 @@ logs:
     matchExactString: false
     caseSensitive: false
     printMatchedString: false
+    sendMatchedLinesAsCustomEvent: true #Not mandatory. default is true. can be configured to disable custom event posting for a particular pattern
+  # below section is optional and can be configured if any of the patterns have to be excluded. If a log line contains any of the patterns to be excluded, then it is ignored.
+  excludeStrings:
+  #displayName Should be unique across the various patterns.
+  - displayName: ""
+    pattern: ""
+    matchExactString: false
+    caseSensitive: false
 
 #Replaces characters in metric name with the specified characters.
 # "replace" takes any regular expression
@@ -87,3 +96,7 @@ controllerInfo:
   nodeName: "" # -Dappdynamics.agent.nodeName
 
 encryptionKey: "abcd"
+
+# if matched lines have to be posted as custom events. default value is false 
+# if sendMatchedLinesAsCustomEvent is set to true, username, password, account, applicationName and nodeName should be set in the controllerInfo section of the config file.  
+sendMatchedLinesAsCustomEvent: true
