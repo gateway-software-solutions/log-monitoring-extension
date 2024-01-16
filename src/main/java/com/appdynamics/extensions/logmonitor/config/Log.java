@@ -30,8 +30,20 @@ public class Log {
     private List<SearchString> searchStrings;
     
     private List<ExcludeString> excludeStrings;
+    
+    private Boolean publishCustomEvent = Boolean.TRUE;
+    
+    private String applicationName;
 
-    public String getDisplayName() {
+    public String getApplicationName() {
+		return applicationName;
+	}
+
+	public void setApplicationName(String applicationName) {
+		this.applicationName = applicationName;
+	}
+
+	public String getDisplayName() {
         return displayName;
     }
 
@@ -71,7 +83,6 @@ public class Log {
         this.searchStrings = searchStrings;
     }
     
-    
 
     public List<ExcludeString> getExcludeStrings() {
 		return excludeStrings;
@@ -79,6 +90,14 @@ public class Log {
 
 	public void setExcludeStrings(List<ExcludeString> excludeStrings) {
 		this.excludeStrings = excludeStrings;
+	}
+
+	public Boolean getPublishCustomEvent() {
+		return publishCustomEvent;
+	}
+
+	public void setPublishCustomEvent(Boolean publishCustomEvent) {
+		this.publishCustomEvent = publishCustomEvent;
 	}
 
 	@Override

@@ -46,6 +46,9 @@ public class LogMonitor extends ABaseMonitor {
     protected void initializeMoreStuff(Map<String, String> args) {
         monitorContextConfiguration = getContextConfiguration();
         configYml = monitorContextConfiguration.getConfigYml();
+        
+        monitorContextConfiguration.getContext().getControllerInfo().getNodeName();
+        
     }
 
     @Override
@@ -57,6 +60,9 @@ public class LogMonitor extends ABaseMonitor {
     public void doRun(TasksExecutionServiceProvider taskExecutor) {
         List<Map<String, ?>> logsFromConfig = (List<Map<String, ?>>) configYml.get("logs");
         List<Log> logsToMonitor = LogMonitorUtil.getValidLogsFromConfig(logsFromConfig, (String) configYml.get("metricPrefix"));
+        // setting custom event name if set
+        CustomLogEvent.setCustomEventName((String)configYml.get("customEventTypeName"));
+        
         FilePointerProcessor filePointerProcessor = new FilePointerProcessor();
         for (Log log : logsToMonitor) {
             LOGGER.info("Starting the Log Monitoring Task for log : " + log.getDisplayName());

@@ -43,6 +43,7 @@ public class LogFileManager {
     private MonitorContextConfiguration monitorContextConfiguration;
     private MonitorExecutorService executorService;
     private EventsServiceDataManager eventsServiceDataManager;
+    private boolean publishCustomEvent;
     private int offset;
 
     public LogFileManager(FilePointerProcessor filePointerProcessor, Log log,
@@ -51,6 +52,7 @@ public class LogFileManager {
         this.filePointerProcessor = filePointerProcessor;
         this.monitorContextConfiguration = monitorContextConfiguration;
         this.executorService = this.monitorContextConfiguration.getContext().getExecutorService();
+        this.publishCustomEvent = evaluateCustomEventFlagConfig();
     }
 
     public LogMetrics processLogMetrics() throws Exception {
@@ -99,7 +101,7 @@ public class LogFileManager {
                 randomAccessFile.seek(0);
             }
             executorService.execute("LogMetricsProcessor", new LogMetricsProcessor(randomAccessFile, log, latch,
-                    logMetrics, currentFile, eventsServiceDataManager, offset));
+                    logMetrics, currentFile, eventsServiceDataManager, isPublishCustomEvent(), offset));
         }
     }
 
@@ -111,7 +113,7 @@ public class LogFileManager {
         OptimizedRandomAccessFile randomAccessFile = new OptimizedRandomAccessFile(file, "r");
         randomAccessFile.seek(currentFilePointerPosition);
         executorService.execute("LogMetricsProcessor", new LogMetricsProcessor(randomAccessFile, log, latch, logMetrics,
-                file, eventsServiceDataManager, offset));
+                file, eventsServiceDataManager,isPublishCustomEvent(), offset));
     }
 
     private void setNewFilePointer(String dynamicLogPath, CopyOnWriteArrayList<FilePointer> filePointers) {
@@ -231,4 +233,25 @@ public class LogFileManager {
         }
         return null;
     }
+    
+    private boolean evaluateCustomEventFlagConfig() {
+    	if(Boolean.TRUE.equals(this.monitorContextConfiguration.getConfigYml().get("sendMatchedLinesAsCustomEvent"))) {
+    		if(null != monitorContextConfiguration.getContext().getControllerClient()) {
+    			LOGGER.info("Initializing CustomEventProcessor");
+    			return true;
+    		}
+    		else {
+    			LOGGER.info("Skipping Initializing CustomEventProcessor as ControllerClient is not initialized");
+    		}
+    	}else {
+    		LOGGER.info("Skipping Initializing CustomEventProcessor as sendMatchedLinesAsCustomEvent is either missing from config.yaml or set to false");
+    	}
+    	return false;
+    }
+
+	public boolean isPublishCustomEvent() {
+		return publishCustomEvent;
+	}
+    
+    
 }

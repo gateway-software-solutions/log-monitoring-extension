@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 
 /**
  * @author Aditya Jagtiani
+ * @author mayank
  */
 public class SearchPattern {
 
@@ -19,12 +20,25 @@ public class SearchPattern {
     private Pattern pattern;
     private boolean caseSensitive;
     private boolean printMatchedString;
+    private boolean publishCustomEvent = true;
+    private String customEventSeverity;
+    private String applicationName;
 
-    public SearchPattern(String displayName, Pattern pattern, Boolean caseSensitive, Boolean printMatchedString) {
+//    public SearchPattern(String displayName, Pattern pattern, Boolean caseSensitive, Boolean printMatchedString) {
+//        this.displayName = displayName;
+//        this.pattern = pattern;
+//        this.caseSensitive = caseSensitive;
+//        this.printMatchedString = printMatchedString;
+//    }
+    
+    public SearchPattern(String displayName, Pattern pattern, Boolean caseSensitive, Boolean printMatchedString,Boolean publishCustomEvent,String customEventSeverity) {
         this.displayName = displayName;
         this.pattern = pattern;
         this.caseSensitive = caseSensitive;
         this.printMatchedString = printMatchedString;
+        if(null != publishCustomEvent)
+        	this.publishCustomEvent = publishCustomEvent;
+        this.customEventSeverity = customEventSeverity;
     }
 
     public String getDisplayName() {
@@ -42,4 +56,24 @@ public class SearchPattern {
     public boolean getPrintMatchedString() {
         return printMatchedString;
     }
+
+	public boolean isPublishCustomEvent() {
+		return publishCustomEvent;
+	}
+
+	public String getCustomEventSeverity() {
+		return customEventSeverity;
+	}
+
+	public String getApplicationName() {
+		return applicationName;
+	}
+
+	public void setApplicationName(String applicationName) {
+		this.applicationName = applicationName;
+	}
+    
+	
+   
+    
 }

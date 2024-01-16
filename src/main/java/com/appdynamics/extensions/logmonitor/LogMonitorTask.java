@@ -8,20 +8,23 @@
 
 package com.appdynamics.extensions.logmonitor;
 
+import static com.appdynamics.extensions.logmonitor.util.Constants.SCHEMA_NAME;
+import static com.appdynamics.extensions.logmonitor.util.LogMonitorUtil.getFinalMetricList;
+import static com.appdynamics.extensions.logmonitor.util.LogMonitorUtil.prepareEventsForPublishing;
+
+import java.util.List;
+
+import org.slf4j.Logger;
+
 import com.appdynamics.extensions.AMonitorTaskRunnable;
 import com.appdynamics.extensions.MetricWriteHelper;
 import com.appdynamics.extensions.conf.MonitorContextConfiguration;
 import com.appdynamics.extensions.logging.ExtensionsLoggerFactory;
 import com.appdynamics.extensions.logmonitor.config.Log;
 import com.appdynamics.extensions.logmonitor.metrics.LogMetrics;
+import com.appdynamics.extensions.logmonitor.processors.CustomEventProcessor;
 import com.appdynamics.extensions.logmonitor.processors.FilePointerProcessor;
 import com.appdynamics.extensions.logmonitor.processors.LogFileManager;
-import org.slf4j.Logger;
-import java.util.List;
-
-import static com.appdynamics.extensions.logmonitor.util.Constants.SCHEMA_NAME;
-import static com.appdynamics.extensions.logmonitor.util.LogMonitorUtil.getFinalMetricList;
-import static com.appdynamics.extensions.logmonitor.util.LogMonitorUtil.prepareEventsForPublishing;
 
 /**
  * @author Aditya Jagtiani
@@ -58,9 +61,11 @@ public class LogMonitorTask implements AMonitorTaskRunnable {
         LogFileManager logFileManager = new LogFileManager(filePointerProcessor, log, monitorContextConfiguration);
         LogMetrics logMetrics = logFileManager.processLogMetrics();
         publishEvents(logMetrics);
+        LOGGER.info("Number of custom events to be published {}",logMetrics.getCustomEventsToBePublished().size());
         LOGGER.info("Printing {} metrics for Log {}", logMetrics.getMetrics().size(), log.getDisplayName());
         metricWriteHelper.transformAndPrintMetrics(getFinalMetricList(logMetrics.getMetrics()));
         filePointerProcessor.updateFilePointerFile();
+        publishCustomEvents(logMetrics);
     }
 
     private void publishEvents(LogMetrics logMetrics) {
@@ -72,5 +77,24 @@ public class LogMonitorTask implements AMonitorTaskRunnable {
         else {
             LOGGER.info("No events to publish for log {}, skipping", log.getDisplayName());
         }
+    }
+    
+    private void publishCustomEvents(LogMetrics logMetrics) {
+    	
+    	List<CustomLogEvent> events = logMetrics.getCustomEventsToBePublished();
+    	
+    	if(null != events && events.size() != 0) {
+    		CustomEventProcessor  customEventProcessor = new CustomEventProcessor(this.monitorContextConfiguration);
+    		
+    		int publishCount = 0;
+    		for (CustomLogEvent customLogEvent : events) {
+    			publishCount = publishCount + customEventProcessor.postCustomEvent(customLogEvent);
+			}
+    		
+    		LOGGER.info("******** Number of custom events to be published for {} is {}",log.getDisplayName(),events.size());
+    		LOGGER.info("******** Number of custom events successfully published for {} is {}",log.getDisplayName(),publishCount);
+    		
+    	}
+    	
     }
 }

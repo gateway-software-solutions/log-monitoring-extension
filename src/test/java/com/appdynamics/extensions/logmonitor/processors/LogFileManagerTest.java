@@ -635,7 +635,7 @@ public class LogFileManagerTest {
         log.setLogDirectory("src/test/resources/");
         log.setLogName("test-log-4-events-service.log");
 
-        SearchPattern searchPattern = new SearchPattern("Test Patterns", Pattern.compile("1"), false, false );
+        SearchPattern searchPattern = new SearchPattern("Test Patterns", Pattern.compile("1"), false, false,true,"ERROR" );
 
         FilePointer filePointer = new FilePointer();
         filePointer.setFilename(log.getLogDirectory() + log.getLogName());

@@ -18,8 +18,19 @@ public class SearchString {
     private Boolean matchExactString;
     private Boolean caseSensitive;
     private Boolean printMatchedString;
+    private Boolean publishCustomEvent;
+    private String customEventSeverity;
+    private String applicationName;
 
-    public String getDisplayName() {
+    public String getApplicationName() {
+		return applicationName;
+	}
+
+	public void setApplicationName(String applicationName) {
+		this.applicationName = applicationName;
+	}
+
+	public String getDisplayName() {
         return displayName;
     }
 
@@ -58,4 +69,23 @@ public class SearchString {
     public Boolean getPrintMatchedString() {
         return printMatchedString;
     }
+
+	public Boolean getPublishCustomEvent() {
+		return publishCustomEvent;
+	}
+
+	public void setPublishCustomEvent(Boolean publishCustomEvent) {
+		this.publishCustomEvent = publishCustomEvent;
+	}
+
+	public String getCustomEventSeverity() {
+		return customEventSeverity;
+	}
+
+	public void setCustomEventSeverity(String customEventSeverity) {
+		this.customEventSeverity = customEventSeverity;
+	}
+    
+	
+    
 }
