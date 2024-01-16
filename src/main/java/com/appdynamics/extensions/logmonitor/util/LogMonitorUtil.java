@@ -41,6 +41,8 @@ public class LogMonitorUtil {
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMonitorUtil.class);
     private static final String CASE_SENSITIVE_PATTERN = "(?-i)";
     private static final String CASE_INSENSITIVE_PATTERN = "(?i)";
+    
+    private static String nodeName = "NotSet"; 
 
     public static String resolvePath(String filename) {
         if (StringUtils.isBlank(filename)) {
@@ -77,8 +79,9 @@ public class LogMonitorUtil {
                 }
                 pattern = Pattern.compile(rawPatternsStringBuilder.toString());
                 SearchPattern searchPattern = new SearchPattern(searchString.getDisplayName(), pattern,
-                        searchString.getCaseSensitive(), searchString.getPrintMatchedString());
-                searchPatterns.add(searchPattern);
+                        searchString.getCaseSensitive(), searchString.getPrintMatchedString(),
+                        searchString.getPublishCustomEvent(),searchString.getCustomEventSeverity());
+                searchPattern.setApplicationName(searchString.getApplicationName());                searchPatterns.add(searchPattern);
             }
         }
         return searchPatterns;
@@ -104,7 +107,7 @@ public class LogMonitorUtil {
                 }
                 pattern = Pattern.compile(rawPatternsStringBuilder.toString());
                 SearchPattern searchPattern = new SearchPattern(excludeString.getDisplayName(), pattern,
-                        excludeString.getCaseSensitive(),false);
+                        excludeString.getCaseSensitive(),false,false,null);
                 searchPatterns.add(searchPattern);
             }
         }
@@ -174,6 +177,7 @@ public class LogMonitorUtil {
         log.setLogDirectory((String) currentLogFromConfig.get("logDirectory"));
         log.setSearchStrings(initializeSearchStrings(currentLogFromConfig));
         log.setExcludeStrings(initializeExcludeStrings(currentLogFromConfig));
+        log.setApplicationName((String)currentLogFromConfig.get("applicationName"));
 
         if (currentLogFromConfig.containsKey("encoding")) {
             String encodingFromConfig = (String) currentLogFromConfig.get("encoding");
@@ -181,6 +185,12 @@ public class LogMonitorUtil {
                 log.setEncoding(encodingFromConfig);
             }
         }
+        if(currentLogFromConfig.containsKey(Constants.PUBLISH_CUSTOM_EVENT_LOGFILE_PROPERTY)) {
+        	log.setPublishCustomEvent((Boolean)currentLogFromConfig.get(Constants.PUBLISH_CUSTOM_EVENT_LOGFILE_PROPERTY));
+        }else {
+        	log.setPublishCustomEvent(Boolean.TRUE);
+        }
+        
         return log;
     }
 
@@ -194,6 +204,20 @@ public class LogMonitorUtil {
             searchString.setMatchExactString((Boolean) searchStringFromLog.get("matchExactString"));
             searchString.setCaseSensitive((Boolean) searchStringFromLog.get("caseSensitive"));
             searchString.setPrintMatchedString((Boolean) searchStringFromLog.get("printMatchedString"));
+            searchString.setApplicationName((String)searchStringFromLog.get("applicationName"));  
+            
+            if(searchStringFromLog.containsKey(Constants.PUBLISH_CUSTOM_EVENT_LOGFILE_PROPERTY)) {
+            	searchString.setPublishCustomEvent((Boolean)searchStringFromLog.get(Constants.PUBLISH_CUSTOM_EVENT_LOGFILE_PROPERTY));
+            }else {
+            	searchString.setPublishCustomEvent(Boolean.TRUE);
+            }
+            
+            if(searchStringFromLog.containsKey(Constants.CUSTOM_EVENT_SEVERITY_PROPERTY)) {
+            	searchString.setCustomEventSeverity((String)searchStringFromLog.get(Constants.CUSTOM_EVENT_SEVERITY_PROPERTY));
+            }else {
+            	searchString.setCustomEventSeverity(Constants.CUSTOM_EVENT_SEVERITY_DEFAULT);
+            }
+            
             searchStrings.add(searchString);
         }
         return searchStrings;
@@ -262,4 +286,14 @@ public class LogMonitorUtil {
         }
         return events;
     }
+
+	public static String getNodeName() {
+		return nodeName;
+	}
+
+	public static void setNodeName(String nodeName) {
+		LogMonitorUtil.nodeName = nodeName;
+	}
+    
+    
 }

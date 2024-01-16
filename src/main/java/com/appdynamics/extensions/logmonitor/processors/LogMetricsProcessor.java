@@ -8,19 +8,18 @@
 
 package com.appdynamics.extensions.logmonitor.processors;
 
-import com.appdynamics.extensions.eventsservice.EventsServiceDataManager;
-import com.appdynamics.extensions.logging.ExtensionsLoggerFactory;
-import com.appdynamics.extensions.logmonitor.config.FilePointer;
-import com.appdynamics.extensions.logmonitor.config.Log;
-import com.appdynamics.extensions.logmonitor.config.SearchPattern;
-import com.appdynamics.extensions.logmonitor.metrics.LogMetrics;
-import com.appdynamics.extensions.metrics.Metric;
-import com.appdynamics.extensions.util.MetricPathUtils;
-import com.google.common.base.Strings;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.text.WordUtils;
-import org.bitbucket.kienerj.OptimizedRandomAccessFile;
-import org.slf4j.Logger;
+import static com.appdynamics.extensions.logmonitor.util.Constants.EXCLUDES;
+import static com.appdynamics.extensions.logmonitor.util.Constants.EXCLUDE_STRING;
+import static com.appdynamics.extensions.logmonitor.util.Constants.FILESIZE_METRIC_NAME;
+import static com.appdynamics.extensions.logmonitor.util.Constants.MATCHES;
+import static com.appdynamics.extensions.logmonitor.util.Constants.METRIC_SEPARATOR;
+import static com.appdynamics.extensions.logmonitor.util.Constants.OCCURRENCES;
+import static com.appdynamics.extensions.logmonitor.util.Constants.SEARCH_STRING;
+import static com.appdynamics.extensions.logmonitor.util.LogMonitorUtil.closeRandomAccessFile;
+import static com.appdynamics.extensions.logmonitor.util.LogMonitorUtil.createExcludePattern;
+import static com.appdynamics.extensions.logmonitor.util.LogMonitorUtil.createPattern;
+import static com.appdynamics.extensions.logmonitor.util.LogMonitorUtil.getCurrentFileCreationTimeStamp;
+
 import java.io.File;
 import java.math.BigInteger;
 import java.util.List;
@@ -29,8 +28,20 @@ import java.util.concurrent.CountDownLatch;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.appdynamics.extensions.logmonitor.util.Constants.*;
-import static com.appdynamics.extensions.logmonitor.util.LogMonitorUtil.*;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.text.WordUtils;
+import org.bitbucket.kienerj.OptimizedRandomAccessFile;
+import org.slf4j.Logger;
+
+import com.appdynamics.extensions.eventsservice.EventsServiceDataManager;
+import com.appdynamics.extensions.logging.ExtensionsLoggerFactory;
+import com.appdynamics.extensions.logmonitor.CustomLogEvent;
+import com.appdynamics.extensions.logmonitor.config.FilePointer;
+import com.appdynamics.extensions.logmonitor.config.Log;
+import com.appdynamics.extensions.logmonitor.config.SearchPattern;
+import com.appdynamics.extensions.logmonitor.metrics.LogMetrics;
+import com.appdynamics.extensions.metrics.Metric;
+import com.appdynamics.extensions.util.MetricPathUtils;
 
 /**
  * @author Aditya Jagtiani
@@ -48,10 +59,11 @@ public class LogMetricsProcessor implements Runnable {
     private LogMetrics logMetrics;
     private EventsServiceDataManager eventsServiceDataManager;
     private LogEventsProcessor logEventsProcessor;
+    private boolean publishCustomEvent;
     private int offset;
 
     LogMetricsProcessor(OptimizedRandomAccessFile randomAccessFile, Log log, CountDownLatch latch, LogMetrics logMetrics,
-                        File currentFile, EventsServiceDataManager eventsServiceDataManager,
+                        File currentFile, EventsServiceDataManager eventsServiceDataManager,boolean publishCustomEvent,
                         int offset) {
         this.randomAccessFile = randomAccessFile;
         this.log = log;
@@ -63,6 +75,7 @@ public class LogMetricsProcessor implements Runnable {
         	this.excludePatterns = createExcludePattern(this.log.getExcludeStrings());
         }
         this.eventsServiceDataManager = eventsServiceDataManager;
+        this.publishCustomEvent = publishCustomEvent;
         this.offset = offset;
     }
 
@@ -204,6 +217,30 @@ public class LogMetricsProcessor implements Runnable {
 	                } else {
 	                    LOGGER.info("This data does not have to be sent to the events service, skipping.");
 	                }
+	                
+	                if(isPublishCustomEvent() && log.getPublishCustomEvent() && searchPattern.isPublishCustomEvent()) {
+	                	
+	                	CustomLogEvent customLogEvent = new CustomLogEvent();
+	                	customLogEvent.setSeverity(searchPattern.getCustomEventSeverity());
+	                	customLogEvent.setSummary(stringToCheck);
+	                	customLogEvent.setMatchedPattern(String.format("%s (%s)",
+	                			searchPattern.getDisplayName(),searchPattern.getPattern().toString()));
+	                	customLogEvent.setLogDisplayName(log.getDisplayName());
+	                	
+	                	if(!StringUtils.isBlank(searchPattern.getApplicationName())) {
+	                		customLogEvent.setApplicationName(searchPattern.getApplicationName());
+	                	}else if(!StringUtils.isBlank(log.getApplicationName())) {
+	                		customLogEvent.setApplicationName(log.getApplicationName());
+	                	}
+	                	
+	                	customLogEvent.setLogFilePath(currentFile.getAbsolutePath());
+	                	
+	                	logMetrics.addCustomLogEvent(customLogEvent);
+	                	
+	                }else {
+	                	LOGGER.info("This data does not have to be sent as custom event, skipping.");
+	                }
+	                
 	            }
 	        }
     	}
@@ -232,4 +269,10 @@ public class LogMetricsProcessor implements Runnable {
                 log.getLogName() : log.getDisplayName();
         return displayName + METRIC_SEPARATOR;
     }
+
+	public boolean isPublishCustomEvent() {
+		return publishCustomEvent;
+	}
+    
+    
 }

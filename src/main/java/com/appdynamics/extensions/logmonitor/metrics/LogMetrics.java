@@ -9,6 +9,7 @@
 
 package com.appdynamics.extensions.logmonitor.metrics;
 
+import com.appdynamics.extensions.logmonitor.CustomLogEvent;
 import com.appdynamics.extensions.logmonitor.LogEvent;
 import com.appdynamics.extensions.logmonitor.config.FilePointer;
 import com.appdynamics.extensions.metrics.Metric;
@@ -21,6 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * @author Aditya Jagtiani
+ * @author Mayank Gupta
  */
 
 public class LogMetrics {
@@ -28,6 +30,7 @@ public class LogMetrics {
     private CopyOnWriteArrayList<FilePointer> filePointers = new CopyOnWriteArrayList<FilePointer>();
     private CopyOnWriteArrayList<LogEvent> eventsToBePublished = new CopyOnWriteArrayList<LogEvent>();
     private ConcurrentHashMap<String, Metric> metrics = new ConcurrentHashMap<String, Metric>();
+    private CopyOnWriteArrayList<CustomLogEvent> customEventsToBePublished = new CopyOnWriteArrayList<CustomLogEvent>();
 
     public String getMetricPrefix() {
         return metricPrefix;
@@ -75,5 +78,13 @@ public class LogMetrics {
 
     public CopyOnWriteArrayList<LogEvent> getEventsToBePublished() {
         return eventsToBePublished;
+    }
+    
+    public void addCustomLogEvent(CustomLogEvent customLogEvent) {
+        customEventsToBePublished.add(customLogEvent);
+    }
+
+    public CopyOnWriteArrayList<CustomLogEvent> getCustomEventsToBePublished() {
+        return customEventsToBePublished;
     }
 }
